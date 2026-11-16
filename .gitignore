@@ -1,0 +1,38 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database and SQLite runtime files
+*.db
+*.db-wal
+*.db-shm
+*.sqlite3
+pam_backend/zerovault_pam.db
+
+# Cryptographic Host Keys generated at runtime
+*.key
+pam_backend/zerovault_rsa.key
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment Variables & Secrets
+.env
+.env.local
+
+# IDE & OS caches
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Test reports & coverage
+.coverage
+htmlcov/
+.pytest_cache/

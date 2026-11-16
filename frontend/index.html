@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeroVault PAM - Zero-Trust Privileged Access Management &amp; Live SSH Proxy</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="top-nav">
+        <div class="brand">
+            <div class="brand-shield">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            </div>
+            <div>
+                <div class="brand-name">ZEROVAULT <span class="brand-accent">PAM</span></div>
+                <div class="brand-tag">Zero-Trust Privileged Access Vault &amp; Live SSH Protocol Proxy</div>
+            </div>
+        </div>
+
+        <div class="header-badges">
+            <div class="status-badge badge-cyan" id="badge-proxy">
+                <span class="pulse-dot"></span>
+                <span>SSH PROXY: <strong>PORT 2222 (LISTENING)</strong></span>
+            </div>
+            <div class="status-badge badge-emerald" id="badge-ledger">
+                <span class="check-icon">✓</span>
+                <span>MERKLE CHAIN: <strong id="header-chain-status">VALID (UNBROKEN)</strong></span>
+            </div>
+            <div class="status-badge badge-purple">
+                <span>ENVELOPE: <strong>AES-256-GCM / 600K PBKDF2</strong></span>
+            </div>
+            <button class="btn-sm btn-outline-cyan" onclick="openPhoneModal()">📱 Phone Alerts</button>
+            <button class="btn-sm btn-outline-cyan" onclick="openComplianceModal()">📜 Audit Certificate</button>
+            <button class="btn-sm btn-outline-cyan" onclick="runIntegrityCheck()">Verify Integrity</button>
+            <button class="btn-sm btn-outline-danger" onclick="resetState()">Reset Vault</button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="pam-container">
+
+        <!-- Top KPI Metrics Ribbon -->
+        <section class="kpi-ribbon">
+            <div class="kpi-card border-cyan">
+                <div class="kpi-label">ENROLLED SERVERS</div>
+                <div class="kpi-value text-cyan" id="kpi-servers">0</div>
+                <div class="kpi-subtext">AES-256-GCM Encrypted</div>
+            </div>
+            <div class="kpi-card border-amber">
+                <div class="kpi-label">ACTIVE JIT LEASES</div>
+                <div class="kpi-value text-amber" id="kpi-leases">0</div>
+                <div class="kpi-subtext">Ephemeral Linux Accounts</div>
+            </div>
+            <div class="kpi-card border-purple">
+                <div class="kpi-label">LIVE SSH SESSIONS</div>
+                <div class="kpi-value text-purple" id="kpi-sessions">0</div>
+                <div class="kpi-subtext">Bridged on Port 2222</div>
+            </div>
+            <div class="kpi-card border-crimson">
+                <div class="kpi-label">COMMANDS BLOCKED</div>
+                <div class="kpi-value text-crimson" id="kpi-blocked">0</div>
+                <div class="kpi-subtext">Mid-Air Firewall Drops</div>
+            </div>
+            <div class="kpi-card border-blue">
+                <div class="kpi-label">MERKLE BLOCKS</div>
+                <div class="kpi-value text-blue" id="kpi-blocks">0</div>
+                <div class="kpi-subtext">SHA-256 Hash Chain</div>
+            </div>
+            <div class="kpi-card border-emerald" id="kpi-card-integrity">
+                <div class="kpi-label">CHAIN INTEGRITY</div>
+                <div class="kpi-value text-emerald" id="kpi-integrity">VALID</div>
+                <div class="kpi-subtext">Cryptographically Proven</div>
+            </div>
+        </section>
+
+        <!-- Navigation Tabs -->
+        <section class="tabs-nav">
+            <button class="tab-btn active" onclick="switchTab('jit')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                JIT Access Console
+            </button>
+            <button class="tab-btn" onclick="switchTab('sessions')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                Live Proxy &amp; Session DVR
+            </button>
+            <button class="tab-btn" onclick="switchTab('webshell')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                In-Browser Web Shell
+            </button>
+            <button class="tab-btn" onclick="switchTab('sql')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                Database SQL Firewall
+            </button>
+            <button class="tab-btn" onclick="switchTab('vault')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Cryptographic Secret Vault
+            </button>
+            <button class="tab-btn" onclick="switchTab('ledger')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                Merkle Audit Ledger
+            </button>
+            <button class="tab-btn" onclick="switchTab('policies')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Command Firewall Policies
+            </button>
+        </section>
+
+        <!-- TAB 1: Just-In-Time (JIT) Access Console -->
+        <section class="tab-pane active" id="pane-jit">
+            <div class="split-grid">
+                <!-- Request Form Card -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <h2>REQUEST JUST-IN-TIME (JIT) ACCESS</h2>
+                        <span class="badge-amber">Self-Destructing Account</span>
+                    </div>
+                    <p class="card-desc">Dynamically provisions a temporary Linux account with strict TTL bounds. The real master password is never shared.</p>
+
+                    <form id="jit-request-form" onsubmit="handleRequestJit(event)">
+                        <div class="form-group">
+                            <label>Target Production Server:</label>
+                            <select id="jit-server-select" class="form-control" required>
+                                <option value="" disabled selected>Loading servers...</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Requester Identity:</label>
+                                <input type="text" id="jit-requester" class="form-control" placeholder="e.g. rahul.verma@corp.local" required value="rahul.verma">
+                            </div>
+                            <div class="form-group">
+                                <label>Time-To-Live (TTL):</label>
+                                <select id="jit-ttl" class="form-control">
+                                    <option value="2">2 Minutes (Quick Test)</option>
+                                    <option value="5">5 Minutes</option>
+                                    <option value="15" selected>15 Minutes (Standard)</option>
+                                    <option value="30">30 Minutes</option>
+                                    <option value="60">60 Minutes</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Business Justification / Reason:</label>
+                            <input type="text" id="jit-reason" class="form-control" placeholder="e.g. Inspect Nginx web service logs & restart worker" required value="Troubleshoot production API service crash">
+                        </div>
+                        <button type="submit" class="btn-primary" id="btn-request-jit">
+                            <span>Issue JIT Ephemeral Lease</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- How It Works Card -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <h2>HOW ZERO-TRUST JIT PROXY WORKS</h2>
+                        <span class="badge-cyan">Zero Shared Passwords</span>
+                    </div>
+                    <div class="jit-workflow-steps">
+                        <div class="step-item">
+                            <div class="step-num">1</div>
+                            <div class="step-content">
+                                <strong>Ephemeral OS Account:</strong>
+                                <span>ZeroVault connects to Linux over SSH and executes <code>sudo useradd -m -s /bin/bash jit_u8421</code>.</span>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-num">2</div>
+                            <div class="step-content">
+                                <strong>Credentialless Connection:</strong>
+                                <span>Connect via: <code class="code-highlight">ssh -p 2222 lease_xxx@127.0.0.1</code>. ZeroVault logs you in automatically without revealing the password.</span>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-num">3</div>
+                            <div class="step-content">
+                                <strong>Mid-Air Keystroke Firewall:</strong>
+                                <span>Every command typed is inspected before Enter. Prohibited commands (e.g. <code>cat /etc/shadow</code>) are dropped instantly.</span>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-num">4</div>
+                            <div class="step-content">
+                                <strong>Automatic Account Self-Destruction:</strong>
+                                <span>The moment the TTL hits 00:00, the proxy severs the session and executes <code>sudo userdel -rf</code> on the target server.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Leases Queue -->
+            <div class="glass-card full-width">
+                <div class="card-header">
+                    <h2>ACTIVE &amp; RECENT JIT EPHEMERAL LEASES</h2>
+                    <button class="btn-sm btn-outline-cyan" onclick="loadLeases()">Refresh Leases</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="pam-table">
+                        <thead>
+                            <tr>
+                                <th>Lease ID</th>
+                                <th>Target Server</th>
+                                <th>Ephemeral User</th>
+                                <th>Requester</th>
+                                <th>TTL Remaining</th>
+                                <th>Status</th>
+                                <th>SSH Command String</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leases-tbody">
+                            <tr><td colspan="8" class="text-center text-muted">No JIT leases issued yet.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: Live Proxy & Session DVR -->
+        <section class="tab-pane" id="pane-sessions">
+            <div class="split-grid">
+                <!-- Active Sessions List -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <h2>LIVE ACTIVE SSH PROXY TUNNELS</h2>
+                        <button class="btn-sm btn-outline-cyan" onclick="loadSessions()">Refresh Sessions</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="pam-table">
+                            <thead>
+                                <tr>
+                                    <th>Session ID</th>
+                                    <th>Lease Token</th>
+                                    <th>Client IP</th>
+                                    <th>Commands</th>
+                                    <th>Violations</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sessions-tbody">
+                                <tr><td colspan="7" class="text-center text-muted">No active SSH sessions right now. Connect via Port 2222 to start!</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Session DVR Player -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <h2>SESSION DVR: TERMINAL REPLAY &amp; KEYSTROKES</h2>
+                        <span class="badge-purple" id="dvr-session-tag">Select a Session</span>
+                    </div>
+                    <div class="terminal-dvr" id="terminal-dvr-display">
+                        <div class="terminal-line text-muted">--- ZEROVAULT PAM SESSION DVR READY ---</div>
+                        <div class="terminal-line text-muted">Click 'View DVR' on any session above to replay keystrokes and command logs.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: Cryptographic Secret Vault -->
+        <section class="tab-pane" id="pane-vault">
+            <div class="split-grid">
+                <!-- Enrolled Servers List -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <h2>ENROLLED TARGET SERVERS (AES-256-GCM VAULT)</h2>
+                        <button class="btn-sm btn-outline-cyan" onclick="loadServers()">Refresh</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="pam-table">
+                            <thead>
+                                <tr>
+                                    <th>Server ID</th>
+                                    <th>Display Name</th>
+                                    <th>Host : Port</th>
+                                    <th>Admin Account</th>
+                                    <th>Envelope Ciphertext</th>
+                                    <th>Last Rotated</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="servers-tbody">
+                                <tr><td colspan="7" class="text-center text-muted">Loading vault...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Add Server Form -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <h2>ENROLL NEW TARGET SERVER</h2>
+                        <span class="badge-cyan">AES-256-GCM Envelope</span>
+                    </div>
+                    <form id="enroll-server-form" onsubmit="handleEnrollServer(event)">
+                        <div class="form-group">
+                            <label>Unique Server ID:</label>
+                            <input type="text" id="srv-id" class="form-control" placeholder="e.g. srv_payment_gw" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Friendly Server Name:</label>
+                            <input type="text" id="srv-name" class="form-control" placeholder="e.g. Kali Linux Core Bastion" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Host IP / Domain:</label>
+                                <input type="text" id="srv-host" class="form-control" placeholder="127.0.0.1 or 192.168.1.100" required>
+                            </div>
+                            <div class="form-group">
+                                <label>SSH Port:</label>
+                                <input type="number" id="srv-port" class="form-control" value="22" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Master Admin Username:</label>
+                                <input type="text" id="srv-user" class="form-control" placeholder="kali or root" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Master Password:</label>
+                                <input type="password" id="srv-pass" class="form-control" placeholder="••••••••••••" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary">
+                            <span>Encrypt &amp; Store in Vault</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: Merkle Audit Ledger -->
+        <section class="tab-pane" id="pane-ledger">
+            <div class="glass-card full-width">
+                <div class="card-header">
+                    <div>
+                        <h2>TAMPER-EVIDENT MERKLE HASH-CHAIN AUDIT LEDGER</h2>
+                        <p class="card-desc">Every command, login, logout, and firewall block is linked using a SHA-256 cryptographic hash chain.</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn-sm btn-emerald" onclick="runIntegrityCheck()">Verify Chain Integrity</button>
+                        <button class="btn-sm btn-crimson" onclick="openTamperModal()">Simulate Tampering Attack</button>
+                    </div>
+                </div>
+
+                <!-- Ledger Status Alert Box -->
+                <div class="ledger-status-box" id="ledger-status-banner">
+                    <div class="status-left">
+                        <span class="status-icon" id="ledger-icon">✓</span>
+                        <div>
+                            <strong id="ledger-headline">LEDGER INTEGRITY VERIFIED (BLOCKS 100% UNBROKEN)</strong>
+                            <p id="ledger-subline">Every block strictly matches its computed SHA-256 parent hash digest.</p>
+                        </div>
+                    </div>
+                    <div class="status-right" id="ledger-meta">
+                        <div>Genesis Hash: <code id="meta-genesis">---</code></div>
+                        <div>Latest Hash: <code id="meta-latest">---</code></div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="pam-table">
+                        <thead>
+                            <tr>
+                                <th>Block #</th>
+                                <th>Timestamp (UTC)</th>
+                                <th>Lease ID</th>
+                                <th>Identity</th>
+                                <th>Command / Event</th>
+                                <th>Action</th>
+                                <th>Rule</th>
+                                <th>Previous SHA-256 Hash</th>
+                                <th>Current SHA-256 Hash</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ledger-tbody">
+                            <tr><td colspan="9" class="text-center text-muted">Loading audit ledger...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: Command Firewall Policies -->
+        <section class="tab-pane" id="pane-policies">
+            <div class="glass-card full-width">
+                <div class="card-header">
+                    <h2>ZERO-TRUST MID-AIR COMMAND FIREWALL POLICIES</h2>
+                    <span class="badge-crimson">Real-Time Drop Engine</span>
+                </div>
+                <p class="card-desc">These policies are evaluated in real-time as users type commands through the Port 2222 SSH Proxy. Forbidden commands are blocked before Enter reaches the server.</p>
+                <div class="policies-grid">
+                    <div class="policy-card">
+                        <div class="policy-header">
+                            <span class="policy-id">RULE-CRED-01</span>
+                            <span class="badge-crimson">CRITICAL</span>
+                        </div>
+                        <h3>CREDENTIAL_FILE_ACCESS</h3>
+                        <p>Prevents unprivileged access to local password hashes.</p>
+                        <div class="regex-box"><code>(cat|nano|vi)\s+(/etc/shadow|/etc/gshadow)</code></div>
+                        <div class="policy-action">Action: Drop Enter, send Ctrl+C, inject terminal alert, increment violation.</div>
+                    </div>
+
+                    <div class="policy-card">
+                        <div class="policy-header">
+                            <span class="policy-id">RULE-DESTR-02</span>
+                            <span class="badge-crimson">CRITICAL</span>
+                        </div>
+                        <h3>DESTRUCTIVE_FILESYSTEM_WIPE</h3>
+                        <p>Neutralizes recursive file or root directory deletion.</p>
+                        <div class="regex-box"><code>rm\s+(-[rfRF]{1,4}\s+)?(/|/\*|~|/\w+)</code></div>
+                        <div class="policy-action">Action: Drop Enter, send Ctrl+C, inject terminal alert, increment violation.</div>
+                    </div>
+
+                    <div class="policy-card">
+                        <div class="policy-header">
+                            <span class="policy-id">RULE-PRIVESC-03</span>
+                            <span class="badge-crimson">CRITICAL</span>
+                        </div>
+                        <h3>UNAUTHORIZED_ROOT_ESCAPE</h3>
+                        <p>Blocks switching to permanent root or editing sudoers.</p>
+                        <div class="regex-box"><code>^(sudo\s+su|sudo\s+-i|su\s+-|visudo)</code></div>
+                        <div class="policy-action">Action: Drop Enter, send Ctrl+C, inject terminal alert, increment violation.</div>
+                    </div>
+
+                    <div class="policy-card">
+                        <div class="policy-header">
+                            <span class="policy-id">RULE-EXFIL-04</span>
+                            <span class="badge-crimson">CRITICAL</span>
+                        </div>
+                        <h3>REVERSE_SHELL_OR_EXFILTRATION</h3>
+                        <p>Catches outbound reverse shells or piped web scripts.</p>
+                        <div class="regex-box"><code>(nc\s+.*-e|/dev/tcp/|curl\s+.*\|\s*bash)</code></div>
+                        <div class="policy-action">Action: Drop Enter, send Ctrl+C, inject terminal alert, increment violation.</div>
+                    </div>
+
+                    <div class="policy-card">
+                        <div class="policy-header">
+                            <span class="policy-id">RULE-PERM-05</span>
+                            <span class="badge-amber">HIGH</span>
+                        </div>
+                        <h3>INSECURE_PERMISSIONS_OVERWRITE</h3>
+                        <p>Blocks granting 777 permissions to system directories.</p>
+                        <div class="regex-box"><code>chmod\s+(-R\s+)?(777|666)\s+(/etc|/bin|/usr)</code></div>
+                        <div class="policy-action">Action: Drop Enter, send Ctrl+C, inject terminal alert, increment violation.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 6: In-Browser Web Shell (Feature 1) -->
+        <section class="tab-pane" id="pane-webshell">
+            <div class="glass-card full-width">
+                <div class="card-header">
+                    <div>
+                        <h2>IN-BROWSER ZERO-TRUST WEB TERMINAL</h2>
+                        <p class="card-desc">Execute commands directly in Chrome without opening PowerShell. Keystrokes are inspected by the mid-air command firewall.</p>
+                    </div>
+                    <div class="terminal-quick-chips">
+                        <span class="chip-label">Quick Test:</span>
+                        <button class="chip-btn" onclick="runWebShellCmd('whoami')">whoami</button>
+                        <button class="chip-btn" onclick="runWebShellCmd('uname -a')">uname -a</button>
+                        <button class="chip-btn" onclick="runWebShellCmd('df -h')">df -h</button>
+                        <button class="chip-btn chip-danger" onclick="runWebShellCmd('cat /etc/shadow')">cat /etc/shadow (Block)</button>
+                        <button class="chip-btn chip-danger" onclick="runWebShellCmd('rm -rf /')">rm -rf / (Block)</button>
+                        <button class="chip-btn chip-danger" onclick="runWebShellCmd('sudo su')">sudo su (Block)</button>
+                    </div>
+                </div>
+
+                <!-- Web Terminal Box -->
+                <div class="webshell-container">
+                    <div class="webshell-topbar">
+                        <div class="terminal-dots">
+                            <span class="dot dot-red"></span>
+                            <span class="dot dot-yellow"></span>
+                            <span class="dot dot-green"></span>
+                        </div>
+                        <span class="terminal-title">jit_user@kali-prod: ~ (ZeroVault Port 2222 Mid-Air Firewall Active)</span>
+                        <button class="btn-sm btn-outline-cyan" onclick="clearWebShell()">Clear Screen</button>
+                    </div>
+                    <div class="webshell-screen" id="webshell-screen">
+                        <div class="terminal-line text-cyan">--- ZEROVAULT PAM: IN-BROWSER WEB SHELL READY ---</div>
+                        <div class="terminal-line text-muted">Connected to Proxy Gateway. Mid-air firewall active on every command.</div>
+                        <div class="terminal-line"><span class="prompt-user">jit_user@kali-prod</span>:<span class="prompt-path">~</span>$ whoami</div>
+                        <div class="terminal-line">jit_user</div>
+                    </div>
+                    <form class="webshell-input-bar" onsubmit="handleWebShellSubmit(event)">
+                        <span class="prompt-user">jit_user@kali-prod</span>:<span class="prompt-path">~</span>$&nbsp;
+                        <input type="text" id="webshell-input" class="webshell-input" placeholder="Type a command (e.g. whoami or cat /etc/shadow)..." autocomplete="off" autofocus>
+                        <button type="submit" class="btn-sm btn-cyan">Execute</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 7: Database SQL Query Firewall (Feature 5) -->
+        <section class="tab-pane" id="pane-sql">
+            <div class="glass-card full-width">
+                <div class="card-header">
+                    <div>
+                        <h2>ZERO-TRUST DATABASE SQL PROTOCOL PROXY &amp; FIREWALL</h2>
+                        <p class="card-desc">Inspects database queries before execution. Blocks table drops, mass PII dumps, and logs statements to the Merkle ledger.</p>
+                    </div>
+                    <span class="badge-cyan">Protected: Production Financial DB</span>
+                </div>
+
+                <div class="sql-grid">
+                    <!-- Query Editor Card -->
+                    <div class="sql-editor-card">
+                        <div class="chip-row">
+                            <span class="chip-label">Sample Queries:</span>
+                            <button class="chip-btn" onclick="setSqlQuery('SELECT id, name, email, tier FROM customers;')">Safe: Query Customers</button>
+                            <button class="chip-btn" onclick="setSqlQuery('SELECT * FROM server_clusters;')">Safe: Server Clusters</button>
+                            <button class="chip-btn chip-danger" onclick="setSqlQuery('DROP TABLE customers;')">Malicious: DROP TABLE</button>
+                            <button class="chip-btn chip-danger" onclick="setSqlQuery('SELECT * FROM credit_cards;')">Malicious: Dump Cards</button>
+                            <button class="chip-btn chip-danger" onclick="setSqlQuery('UPDATE accounts SET balance = 999999;')">Malicious: Mass UPDATE</button>
+                        </div>
+                        <div class="form-group" style="margin-top:14px;">
+                            <label>SQL Query Statement:</label>
+                            <textarea id="sql-query-input" class="form-control sql-textarea" rows="4">SELECT id, name, email, tier FROM customers;</textarea>
+                        </div>
+                        <button class="btn-primary" onclick="executeDatabaseQuery()">
+                            <span>Execute Query via SQL Firewall</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Query Result Card -->
+                    <div class="sql-result-card">
+                        <h3>FIREWALL INSPECTION RESULT</h3>
+                        <div id="sql-result-status" class="sql-status-box status-ready">
+                            Ready to inspect SQL query...
+                        </div>
+                        <div class="table-responsive" style="margin-top:14px;">
+                            <table class="pam-table" id="sql-result-table">
+                                <thead id="sql-table-head">
+                                    <tr><th>id</th><th>name</th><th>email</th><th>tier</th></tr>
+                                </thead>
+                                <tbody id="sql-table-body">
+                                    <tr><td colspan="4" class="text-muted text-center">Execute query above to view results.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal for Simulating Tampering -->
+    <div class="modal-backdrop" id="tamper-modal" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Simulate Database Tamper Attack</h3>
+                <button class="modal-close" onclick="closeTamperModal()">&times;</button>
+            </div>
+            <p class="modal-desc">This simulates a malicious insider or attacker directly editing a row in SQLite (e.g. changing <code>cat /etc/shadow</code> to <code>ls -la</code>) to cover their tracks without updating the hash.</p>
+            <div class="form-group">
+                <label>Select Block # to Alter:</label>
+                <input type="number" id="tamper-block-num" class="form-control" value="1" min="1">
+            </div>
+            <div class="form-group">
+                <label>Altered Command String:</label>
+                <input type="text" id="tamper-cmd" class="form-control" value="ls -la (Tampered)">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeTamperModal()">Cancel</button>
+                <button class="btn-crimson" onclick="executeTamperAttack()">Inject Tampered Record</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Telegram Phone Buzz Settings (Feature 3) -->
+    <div class="modal-backdrop" id="phone-modal" style="display:none;">
+        <div class="modal-box" style="width:540px;">
+            <div class="modal-header">
+                <h3>📱 Connect Phone for Live Buzz Alerts</h3>
+                <button class="modal-close" onclick="closePhoneModal()">&times;</button>
+            </div>
+            <p class="modal-desc">Whenever an attacker types a forbidden command (e.g. <code>cat /etc/shadow</code>) or drops a database table, ZeroVault dispatches an instant push notification that <strong>rings and vibrates your phone</strong>!</p>
+            
+            <div class="instruction-box">
+                <strong>How to get your free Telegram Bot Token in 60 seconds:</strong>
+                <ol style="margin-left:18px;margin-top:6px;font-size:12px;color:var(--text-secondary);">
+                    <li>Open Telegram on your phone and search for <code>@BotFather</code>.</li>
+                    <li>Type <code>/newbot</code> and follow the 2 steps to get your <strong>Bot Token</strong>.</li>
+                    <li>Search for <code>@userinfobot</code> in Telegram to get your <strong>Chat ID</strong>.</li>
+                </ol>
+            </div>
+
+            <div class="form-group" style="margin-top:14px;">
+                <label>Telegram Bot Token (Option B):</label>
+                <input type="text" id="telegram-token-input" class="form-control" placeholder="e.g. 7123456789:AAHxxxxx...">
+            </div>
+            <div class="form-group">
+                <label>Telegram Chat ID (Option B):</label>
+                <input type="text" id="telegram-chat-input" class="form-control" placeholder="e.g. 987654321">
+            </div>
+            <div class="form-group">
+                <label>Discord / Slack Webhook URL (Option C):</label>
+                <input type="text" id="webhook-url-input" class="form-control" placeholder="e.g. https://discord.com/api/webhooks/...">
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closePhoneModal()">Close</button>
+                <button class="btn-sm btn-outline-cyan" onclick="saveTelegramConfig()">Save Credentials</button>
+                <button class="btn-emerald" onclick="testPhoneBuzz()">📲 Send Test Buzz to Phone</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Compliance Certificate & Audit Report (Feature 6) -->
+    <div class="modal-backdrop" id="compliance-modal" style="display:none;">
+        <div class="modal-box" style="width:780px;max-height:85vh;overflow-y:auto;">
+            <div class="modal-header">
+                <div>
+                    <h3 style="color:var(--cyan);">📜 ZEROVAULT PAM: FORMAL COMPLIANCE CERTIFICATE</h3>
+                    <p style="font-size:11px;color:var(--text-secondary);">Bank-Grade Privileged Access Audit Report (PCI-DSS 4.0 / RBI CSF / SOC 2 Type II)</p>
+                </div>
+                <button class="modal-close" onclick="closeComplianceModal()">&times;</button>
+            </div>
+
+            <div class="certificate-paper" id="certificate-content">
+                <div class="cert-header">
+                    <div class="cert-seal">★ OFFICIAL AUDIT VERIFIED ★</div>
+                    <h2>ZERO-TRUST PRIVILEGED ACCESS COMPLIANCE CERTIFICATE</h2>
+                    <p id="cert-id" style="font-family:var(--font-mono);font-size:12px;color:var(--purple);">CERTIFICATE #CERT-PAM-2026-001</p>
+                    <p id="cert-date" style="font-size:11px;color:var(--text-muted);">Verified at: 2026-11-16 10:45:00 UTC</p>
+                </div>
+
+                <div class="cert-section">
+                    <h4>1. REGULATORY STANDARD COMPLIANCE MAPPING</h4>
+                    <ul class="cert-list">
+                        <li><strong>PCI-DSS v4.0 (Req 7 &amp; 8):</strong> Enforces strict Just-In-Time (JIT) access leases with zero permanent root credentials.</li>
+                        <li><strong>RBI Cyber Security Framework:</strong> Mandatory session recording and mid-air command filtering for Tier-1 banking hosts.</li>
+                        <li><strong>SOC 2 Type II (Trust Services Criteria CC6.1 - CC6.3):</strong> Logical privilege boundaries with cryptographic Merkle ledger.</li>
+                        <li><strong>ISO/IEC 27001:2022 (Control A.8.2):</strong> Automated privilege revocation via background TTL reaper daemon.</li>
+                    </ul>
+                </div>
+
+                <div class="cert-section">
+                    <h4>2. CRYPTOGRAPHIC PROOF OF LOG INTEGRITY (MERKLE HASH-CHAIN)</h4>
+                    <div class="cert-proof-box">
+                        <div>Integrity Status: <strong style="color:var(--emerald);" id="cert-chain-status">100% UNBROKEN (MATHEMATICALLY PROVEN)</strong></div>
+                        <div>Genesis Block Hash: <code id="cert-genesis-hash">---</code></div>
+                        <div>Latest Block Hash: <code id="cert-latest-hash">---</code></div>
+                        <div>Total Blocks Audited: <strong id="cert-total-blocks">0</strong></div>
+                    </div>
+                </div>
+
+                <div class="cert-section">
+                    <h4>3. EXECUTIVE DEFENSE METRICS</h4>
+                    <div class="cert-metrics-grid">
+                        <div class="metric-box">
+                            <span class="m-val" id="cert-servers">0</span>
+                            <span class="m-lbl">Protected Servers</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="m-val" id="cert-leases">0</span>
+                            <span class="m-lbl">JIT Leases Issued</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="m-val" id="cert-blocked">0</span>
+                            <span class="m-lbl">Attacks Prevented</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="m-val" id="cert-blocks">0</span>
+                            <span class="m-lbl">Audit Blocks Chained</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeComplianceModal()">Close</button>
+                <button class="btn-primary" onclick="printComplianceCertificate()">
+                    <span>🖨️ Print / Save as PDF Certificate</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    </main>
+
+    <!-- Modal for Simulating Tampering -->
+    <div class="modal-backdrop" id="tamper-modal" style="display:none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Simulate Database Tamper Attack</h3>
+                <button class="modal-close" onclick="closeTamperModal()">&times;</button>
+            </div>
+            <p class="modal-desc">This simulates a malicious insider or attacker directly editing a row in SQLite (e.g. changing <code>cat /etc/shadow</code> to <code>ls -la</code>) to cover their tracks without updating the hash.</p>
+            <div class="form-group">
+                <label>Select Block # to Alter:</label>
+                <input type="number" id="tamper-block-num" class="form-control" value="1" min="1">
+            </div>
+            <div class="form-group">
+                <label>Altered Command String:</label>
+                <input type="text" id="tamper-cmd" class="form-control" value="ls -la (Tampered)">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeTamperModal()">Cancel</button>
+                <button class="btn-crimson" onclick="executeTamperAttack()">Inject Tampered Record</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>
