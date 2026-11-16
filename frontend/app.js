@@ -13,9 +13,10 @@ function initApp() {
     loadSessions();
     loadLedger();
 
-    // Polling intervals
+    // Polling intervals (auto-refresh leases every 4 seconds so table never gets desynced)
     setInterval(loadKPIs, 4000);
     setInterval(loadSessions, 4000);
+    setInterval(loadLeases, 4000);
 
     // 1-Second Countdown Timer
     if (countdownInterval) clearInterval(countdownInterval);
@@ -50,6 +51,13 @@ async function loadKPIs() {
             document.getElementById('kpi-sessions').innerText = data.active_sessions || 0;
             document.getElementById('kpi-blocked').innerText = data.blocked_commands || 0;
             document.getElementById('kpi-blocks').innerText = data.total_ledger_blocks || 0;
+
+            if (data.db_engine) {
+                const dbEngineEl = document.getElementById('header-db-engine');
+                if (dbEngineEl) {
+                    dbEngineEl.innerText = data.db_engine;
+                }
+            }
 
             const isIntegrityValid = (data.chain_integrity === "VALID");
             const integrityEl = document.getElementById('kpi-integrity');

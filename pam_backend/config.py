@@ -5,6 +5,7 @@ from typing import ClassVar, List, Dict, Any
 BASE_DIR = Path(__file__).resolve().parent
 
 class Config:
+    BASE_DIR = BASE_DIR
     PROJECT_NAME = "ZeroVault PAM"
     PROJECT_SUBTITLE = "Zero-Trust Privileged Access Management & Live SSH Protocol Proxy"
     VERSION = "1.0.0"
@@ -22,9 +23,17 @@ class Config:
     VAULT_MASTER_PASSPHRASE = os.environ.get("ZEROVAULT_MASTER_KEY", "ZeroVault-MasterSecret-Key-2026-Enterprise!")
     PBKDF2_ITERATIONS = 600000  # OWASP standard for PBKDF2-HMAC-SHA256
     
-    # Paths
-    DATABASE_PATH = str(BASE_DIR / "zerovault_pam.db")
+    # Database Settings: 'sqlite' (zero-setup embedded SQL) or 'mysql' (enterprise MySQL server)
+    DB_TYPE = os.environ.get("ZEROVAULT_DB_TYPE", "sqlite").lower()
+    DATABASE_PATH = os.environ.get("ZEROVAULT_DB_PATH", str(BASE_DIR / "zerovault_pam.db"))
     RSA_HOST_KEY_PATH = str(BASE_DIR / "zerovault_rsa.key")
+
+    # Enterprise MySQL Connection Settings (active when ZEROVAULT_DB_TYPE=mysql)
+    MYSQL_HOST = os.environ.get("MYSQL_HOST", "localhost")
+    MYSQL_PORT = int(os.environ.get("MYSQL_PORT", "3306"))
+    MYSQL_USER = os.environ.get("MYSQL_USER", "root")
+    MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "")
+    MYSQL_DATABASE = os.environ.get("MYSQL_DATABASE", "zerovault_pam")
 
     # JIT Ephemeral Access Settings
     DEFAULT_LEASE_TTL_MINUTES = 15

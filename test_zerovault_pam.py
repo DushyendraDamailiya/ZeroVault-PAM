@@ -25,11 +25,30 @@ class TestZeroVaultPAM(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Initialize database before running tests."""
+        """Configure isolated test database so production zerovault_pam.db is never touched."""
+        from pathlib import Path
+        cls.orig_db_path = Config.DATABASE_PATH
+        cls.orig_db_type = Config.DB_TYPE
+        cls.test_db_path = str(Path(cls.orig_db_path).parent / "zerovault_test.db")
+        Config.DATABASE_PATH = cls.test_db_path
+        Config.DB_TYPE = "sqlite"
         db.init_db()
 
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up test database and restore production database path."""
+        from pathlib import Path
+        test_file = Path(cls.test_db_path)
+        if test_file.exists():
+            try:
+                test_file.unlink()
+            except Exception:
+                pass
+        Config.DATABASE_PATH = cls.orig_db_path
+        Config.DB_TYPE = cls.orig_db_type
+
     def setUp(self):
-        """Reset database to clean state for each test."""
+        """Reset isolated test database to clean state for each test."""
         self.client = app.test_client()
         self.client.post("/api/reset")
         self.gateway = SSHProxyGateway()

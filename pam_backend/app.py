@@ -468,10 +468,20 @@ def export_compliance_report():
 @app.route("/api/reset", methods=["POST"])
 def reset_database():
     """Resets ZeroVault database to clean initial state."""
-    db_file = Path(Config.DATABASE_PATH)
-    if db_file.exists():
+    db_type = getattr(Config, "DB_TYPE", "sqlite").lower()
+    if db_type == "sqlite":
+        db_file = Path(Config.DATABASE_PATH)
+        if db_file.exists():
+            try:
+                db_file.unlink()
+            except Exception:
+                pass
+    elif db_type == "mysql":
         try:
-            db_file.unlink()
+            conn = db.get_db_connection()
+            for tbl in ["sessions", "audit_ledger", "leases", "servers"]:
+                conn.execute(f"DROP TABLE IF EXISTS {tbl};")
+            conn.close()
         except Exception:
             pass
     db.init_db()
