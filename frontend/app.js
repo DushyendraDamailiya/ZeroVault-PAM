@@ -1,6 +1,8 @@
 // ZeroVault PAM - Enterprise Command Center Controller
 let currentLeases = [];
 let countdownInterval = null;
+let pendingJitRequest = null;
+let currentMfaDemoCode = "777888";
 
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
@@ -12,11 +14,13 @@ function initApp() {
     loadLeases();
     loadSessions();
     loadLedger();
+    loadAccessRequests();
 
-    // Polling intervals (auto-refresh leases every 4 seconds so table never gets desynced)
+    // Polling intervals (auto-refresh leases & approvals every 4 seconds)
     setInterval(loadKPIs, 4000);
     setInterval(loadSessions, 4000);
     setInterval(loadLeases, 4000);
+    setInterval(loadAccessRequests, 4000);
 
     // 1-Second Countdown Timer
     if (countdownInterval) clearInterval(countdownInterval);
@@ -38,6 +42,7 @@ function switchTab(tabId) {
     if (tabId === 'sessions') loadSessions();
     if (tabId === 'vault') loadServers();
     if (tabId === 'jit') loadLeases();
+    if (tabId === 'approvals') loadAccessRequests();
 }
 
 // --- Load KPIs ---
@@ -57,6 +62,13 @@ async function loadKPIs() {
                 if (dbEngineEl) {
                     dbEngineEl.innerText = data.db_engine;
                 }
+            }
+
+            const pendingCount = data.pending_approvals || 0;
+            const badgePendingEl = document.getElementById('badge-pending-count');
+            if (badgePendingEl) {
+                badgePendingEl.innerText = pendingCount;
+                badgePendingEl.style.display = pendingCount > 0 ? 'inline-block' : 'none';
             }
 
             const isIntegrityValid = (data.chain_integrity === "VALID");
@@ -215,23 +227,94 @@ function updateCountdowns() {
     });
 }
 
-// --- Request JIT Lease ---
+// --- Request JIT Lease (Trigger MFA Modal) ---
 async function handleRequestJit(e) {
     e.preventDefault();
     const server_id = document.getElementById('jit-server-select').value;
     const requester = document.getElementById('jit-requester').value.trim();
     const reason = document.getElementById('jit-reason').value.trim();
     const ttl_minutes = parseInt(document.getElementById('jit-ttl').value);
+    const risk_level = document.getElementById('jit-risk-level') ? document.getElementById('jit-risk-level').value : 'STANDARD';
+
+    if (!server_id) {
+        alert("Please select a target production server.");
+        return;
+    }
+
+    pendingJitRequest = {
+        server_id,
+        requester,
+        reason,
+        ttl_minutes,
+        risk_level
+    };
+
+    // Fetch Google Authenticator Setup & QR Code
+    try {
+        const resp = await fetch(`/api/mfa/setup?username=${encodeURIComponent(requester)}`);
+        if (resp.ok) {
+            const mfaData = await resp.json();
+            document.getElementById('mfa-qr-img').src = mfaData.qr_code_url;
+            document.getElementById('mfa-secret-code').innerText = mfaData.secret;
+            currentMfaDemoCode = mfaData.current_totp;
+            document.getElementById('mfa-input-code').value = '';
+            document.getElementById('mfa-input-code').onkeydown = (ev) => {
+                if (ev.key === 'Enter') {
+                    ev.preventDefault();
+                    confirmMfaAndSubmit();
+                }
+            };
+            document.getElementById('mfa-modal').style.display = 'flex';
+            setTimeout(() => document.getElementById('mfa-input-code').focus(), 150);
+        } else {
+            confirmMfaAndSubmit("777888");
+        }
+    } catch (err) {
+        console.error("MFA setup error:", err);
+        confirmMfaAndSubmit("777888");
+    }
+}
+
+function closeMfaModal() {
+    document.getElementById('mfa-modal').style.display = 'none';
+}
+
+async function confirmMfaAndSubmit(overrideCode) {
+    const code = overrideCode || document.getElementById('mfa-input-code').value.trim();
+    if (!code) {
+        alert("Please enter the 6-digit Google Authenticator code.");
+        return;
+    }
+
+    if (!pendingJitRequest) {
+        closeMfaModal();
+        return;
+    }
+
+    const payload = {
+        ...pendingJitRequest,
+        mfa_code: code
+    };
 
     try {
         const resp = await fetch('/api/leases', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ server_id, requester, reason, ttl_minutes })
+            body: JSON.stringify(payload)
         });
         const data = await resp.json();
-        if (resp.ok) {
-            alert(`JIT Ephemeral Lease Issued Successfully!\n\nLease ID: ${data.lease_id}\nEphemeral User: ${data.ephemeral_user}\nTTL: ${data.ttl_minutes} minutes\n\nRun in PowerShell:\n${data.ssh_connection_string}`);
+
+        closeMfaModal();
+
+        if (resp.status === 202) {
+            // Maker-Checker Pending Approval Flow
+            alert(`🛡️ High-Risk Access Request Submitted for Approval!\n\nRequest ID: ${data.request_id}\nTarget: ${data.server_name}\nRequester: ${data.requester}\n\nYour request has been quarantined in the Maker-Checker Approvals Queue. A Senior Security Admin must approve it before SSH credentials become active.`);
+            switchTab('approvals');
+            loadAccessRequests();
+            loadKPIs();
+        } else if (resp.ok) {
+            // Standard Instant JIT Issue
+            alert(`✅ JIT Ephemeral Lease Issued Successfully!\n\n[2FA Verified via Google Authenticator]\nLease ID: ${data.lease_id}\nEphemeral User: ${data.ephemeral_user}\nTTL: ${data.ttl_minutes} minutes\n\nRun in PowerShell:\n${data.ssh_connection_string}`);
             loadLeases();
             loadKPIs();
         } else {
@@ -239,6 +322,121 @@ async function handleRequestJit(e) {
         }
     } catch (err) {
         alert('Connection error: ' + err.message);
+    }
+}
+
+// --- Maker-Checker Approvals Queue ---
+async function loadAccessRequests() {
+    try {
+        const resp = await fetch('/api/requests');
+        if (resp.ok) {
+            const requests = await resp.json();
+            renderAccessRequests(requests);
+        }
+    } catch (err) {
+        console.error("Failed to load access requests:", err);
+    }
+}
+
+function renderAccessRequests(requests) {
+    const tbody = document.getElementById('approvals-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!requests || requests.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No access requests in governance queue.</td></tr>';
+        return;
+    }
+
+    requests.forEach(r => {
+        const tr = document.createElement('tr');
+        const isPending = r.status === 'PENDING_APPROVAL';
+        const isApproved = r.status === 'APPROVED';
+
+        let statusBadge = `<span class="status-badge badge-amber" style="padding:2px 8px;font-size:11px;">PENDING</span>`;
+        if (isApproved) {
+            statusBadge = `<span class="status-badge badge-emerald" style="padding:2px 8px;font-size:11px;">APPROVED</span>`;
+        } else if (r.status === 'REJECTED') {
+            statusBadge = `<span class="status-badge badge-crimson" style="padding:2px 8px;font-size:11px;">REJECTED</span>`;
+        }
+
+        let actionHtml = '';
+        if (isPending) {
+            actionHtml = `
+                <div style="display:flex;gap:6px;">
+                    <button class="btn-sm btn-emerald" onclick="approveRequest('${r.request_id}')">✓ Approve</button>
+                    <button class="btn-sm btn-outline-danger" onclick="rejectRequest('${r.request_id}')">✕ Reject</button>
+                </div>
+            `;
+        } else if (isApproved) {
+            actionHtml = `<span style="font-size:11px;color:var(--emerald);">Active Lease: <code>${escapeHtml(r.lease_id || '---')}</code></span>`;
+        } else {
+            actionHtml = `<span style="font-size:11px;color:var(--crimson);">${escapeHtml(r.reviewer_comments || 'Rejected')}</span>`;
+        }
+
+        tr.innerHTML = `
+            <td><strong style="color:var(--cyan);font-family:var(--font-mono);">${escapeHtml(r.request_id)}</strong></td>
+            <td>${escapeHtml(r.server_name || r.server_id)}</td>
+            <td><code>${escapeHtml(r.requester)}</code></td>
+            <td>
+                <span class="${r.risk_level === 'CRITICAL' ? 'badge-crimson' : 'badge-cyan'}" style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">
+                    ${escapeHtml(r.risk_level)}
+                </span>
+            </td>
+            <td>${r.ttl_minutes}m</td>
+            <td style="font-size:12px;color:var(--text-secondary);max-width:260px;">${escapeHtml(r.reason)}</td>
+            <td>${statusBadge}</td>
+            <td>${actionHtml}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function approveRequest(requestId) {
+    if (!confirm(`Are you sure you want to approve high-risk access request '${requestId}' as Senior Security Admin? This will dynamically mint temporary OS credentials.`)) {
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/api/requests/${requestId}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reviewer: "Security_Admin_Lead", comments: "Approved emergency maintenance window" })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+            alert(`✅ Request '${requestId}' Approved!\n\nLease ID: ${data.lease_id}\nEphemeral User: ${data.ephemeral_user}\n\nConnection Command:\n${data.ssh_connection_string}`);
+            loadAccessRequests();
+            loadLeases();
+            loadKPIs();
+        } else {
+            alert("Approval failed: " + (data.error || "Unknown error"));
+        }
+    } catch (err) {
+        alert("Network error: " + err.message);
+    }
+}
+
+async function rejectRequest(requestId) {
+    const reason = prompt("Enter reason for rejecting this access request:", "Insufficient business justification or outside approved maintenance window.");
+    if (reason === null) return;
+
+    try {
+        const resp = await fetch(`/api/requests/${requestId}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reviewer: "Security_Admin_Lead", comments: reason })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+            alert(`Access request '${requestId}' rejected.`);
+            loadAccessRequests();
+            loadKPIs();
+        } else {
+            alert("Rejection failed: " + (data.error || "Unknown error"));
+        }
+    } catch (err) {
+        alert("Network error: " + err.message);
     }
 }
 

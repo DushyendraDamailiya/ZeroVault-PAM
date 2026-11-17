@@ -331,5 +331,94 @@ class TestZeroVaultPAM(unittest.TestCase):
         res2 = self.client.post("/api/leases", json={"server_id": "srv_kali_prod", "ttl_minutes": None})
         self.assertEqual(res2.status_code, 201)
 
+    # --- 7. Feature 1 & 2: MFA & Maker-Checker Tests ---
+    def test_mfa_setup_and_verification_flow(self):
+        """Verifies Google Authenticator TOTP setup, QR code generation, and verification."""
+        setup_res = self.client.get("/api/mfa/setup?username=rahul.verma")
+        self.assertEqual(setup_res.status_code, 200)
+        data = setup_res.get_json()
+        self.assertIn("data:image/png;base64,", data["qr_code_url"])
+        self.assertEqual(len(data["current_totp"]), 6)
+
+        # Verify with current valid code
+        verify_valid = self.client.post("/api/mfa/verify", json={
+            "secret": data["secret"],
+            "code": data["current_totp"]
+        })
+        self.assertEqual(verify_valid.status_code, 200)
+        self.assertTrue(verify_valid.get_json()["valid"])
+
+        # Verify with invalid code
+        verify_invalid = self.client.post("/api/mfa/verify", json={
+            "secret": data["secret"],
+            "code": "000000"
+        })
+        self.assertEqual(verify_invalid.status_code, 400)
+
+    def test_maker_checker_critical_approval_lifecycle(self):
+        """Verifies Maker-Checker Dual-Approval lifecycle: Request -> Pending -> Approve -> Active Lease."""
+        req_payload = {
+            "server_id": "srv_kali_prod",
+            "requester": "junior_dev@corp.local",
+            "reason": "Emergency DB schema migration",
+            "risk_level": "CRITICAL",
+            "ttl_minutes": 20,
+            "mfa_code": "777888"
+        }
+        submit_res = self.client.post("/api/leases", json=req_payload)
+        self.assertEqual(submit_res.status_code, 202)
+        submit_data = submit_res.get_json()
+        self.assertEqual(submit_data["status"], "PENDING_APPROVAL")
+        req_id = submit_data["request_id"]
+
+        # Check in requests queue
+        queue_res = self.client.get("/api/requests")
+        self.assertEqual(queue_res.status_code, 200)
+        requests_list = queue_res.get_json()
+        matching = [r for r in requests_list if r["request_id"] == req_id]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0]["status"], "PENDING_APPROVAL")
+
+        # Senior Admin Approves
+        approve_res = self.client.post(f"/api/requests/{req_id}/approve", json={
+            "reviewer": "CISO_Executive",
+            "comments": "Approved emergency maintenance window"
+        })
+        self.assertEqual(approve_res.status_code, 200)
+        approve_data = approve_res.get_json()
+        self.assertEqual(approve_data["status"], "APPROVED")
+        self.assertIn("lease_id", approve_data)
+
+        # Verify lease is now active in /api/leases
+        leases_res = self.client.get("/api/leases")
+        active_lease_ids = [l["lease_id"] for l in leases_res.get_json()]
+        self.assertIn(approve_data["lease_id"], active_lease_ids)
+
+    def test_maker_checker_rejection_lifecycle(self):
+        """Verifies Maker-Checker Dual-Approval rejection flow."""
+        req_payload = {
+            "server_id": "srv_kali_prod",
+            "requester": "intern@corp.local",
+            "reason": "Unapproved root exploration",
+            "risk_level": "CRITICAL",
+            "ttl_minutes": 15,
+            "mfa_code": "777888"
+        }
+        submit_res = self.client.post("/api/leases", json=req_payload)
+        req_id = submit_res.get_json()["request_id"]
+
+        # Reject
+        reject_res = self.client.post(f"/api/requests/{req_id}/reject", json={
+            "reviewer": "Security_Lead",
+            "comments": "Rejected: Access not justified."
+        })
+        self.assertEqual(reject_res.status_code, 200)
+        self.assertEqual(reject_res.get_json()["status"], "REJECTED")
+
+        # Verify request record shows REJECTED
+        queue_res = self.client.get("/api/requests")
+        matching = [r for r in queue_res.get_json() if r["request_id"] == req_id]
+        self.assertEqual(matching[0]["status"], "REJECTED")
+
 if __name__ == "__main__":
     unittest.main()

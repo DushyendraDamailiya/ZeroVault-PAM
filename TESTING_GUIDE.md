@@ -241,9 +241,46 @@ jit_u2915@kali-prod:~$
 
 ---
 
-## 9. Automated Test Suite
+## 9. Step 8: Test Google Authenticator 2FA (MFA Verification)
 
-To run all 13 unit and integration tests across encryption, proxy, firewall, provisioner, and Merkle ledger:
+1. On the **JIT Access Console** tab, fill out the request form.
+2. Click **"Issue JIT Ephemeral Lease"**.
+3. A popup modal appears: **`🔐 GOOGLE AUTHENTICATOR 2FA VERIFICATION`**.
+4. Open Google Authenticator (or Authy / Microsoft Authenticator) on your phone, tap **+**, and scan the QR code displayed on your screen.
+5. Type the 6-digit code shown on your phone into the box and press **Enter** (or click **"Verify Code & Grant Access"**).
+6. The backend verifies the cryptographic TOTP hash. The lease is issued with 2FA identity confirmation!
+
+---
+
+## 10. Step 9: Test Maker-Checker Dual-Approval ("Four-Eyes" Principle)
+
+1. On the **JIT Access Console** tab:
+   - Select **Access Governance Tier**: `🔴 Critical Production Tier (Requires Senior Admin Approval)`.
+   - Enter reason: `Emergency financial ledger reconciliation`.
+   - Click **"Issue JIT Ephemeral Lease"**.
+2. Complete the 2FA verification code.
+3. An alert confirms:
+   ```
+   🛡️ High-Risk Access Request Submitted for Approval!
+   Request ID: REQ-17318...
+   Your request has been quarantined in the Maker-Checker Approvals Queue.
+   ```
+4. The dashboard automatically navigates to the **Maker-Checker Approvals** tab.
+5. In the table, observe:
+   - Status shows amber: **`PENDING`**.
+   - Notice the amber notification badge `1` in the top navigation tab!
+6. Click the green **`✓ Approve`** button:
+   - Confirm the Senior Admin sign-off popup.
+   - ZeroVault dynamically mints the temporary credentials and generates the SSH connection string:
+     `ssh -p 2222 lease_xxx@127.0.0.1`
+   - The status updates to **`APPROVED`** and the lease is active in the JIT queue!
+7. *(Optional)* Submit another Critical request and click **`✕ Reject`** to test administrative denial.
+
+---
+
+## 11. Automated Test Suite
+
+To run all 25 unit and integration tests across encryption, proxy, firewall, provisioner, Merkle ledger, MFA, and Maker-Checker:
 
 ```powershell
 .\run_pam_tests.bat
@@ -252,7 +289,7 @@ To run all 13 unit and integration tests across encryption, proxy, firewall, pro
 
 ### Expected Output:
 ```
-Ran 13 tests in 11.549s
+Ran 25 tests in 25.138s
 OK (100% Passed)
 ```
 
@@ -263,6 +300,8 @@ OK (100% Passed)
 | Test Case | Method | Expected Result | Pass? |
 | :--- | :--- | :--- | :---: |
 | **Start Server** | `.\run_zerovault.bat` | Proxy on Port 2222, Web UI on 5005 | ✅ |
+| **Google Authenticator MFA** | Request Form -> QR Modal | 6-digit TOTP verified via phone or demo button | ✅ |
+| **Maker-Checker Approval** | Select Critical Tier | Held in quarantine until Admin clicks 'Approve' | ✅ |
 | **Issue Lease** | Web UI Button | Unique token issued with live countdown | ✅ |
 | **Credentialless SSH** | `ssh -p 2222 lease_xxx@127.0.0.1` | Interactive shell opened without real password | ✅ |
 | **Safe Commands** | `whoami`, `df -h` | Normal execution and output | ✅ |
@@ -271,4 +310,4 @@ OK (100% Passed)
 | **Merkle Hash Chain** | Tab 4 "Verify Chain Integrity" | 100% unbroken SHA-256 hash validation | ✅ |
 | **Tamper Detection** | Tab 4 "Simulate Tampering" | Immediate fraud alert pinpointing altered block | ✅ |
 | **TTL Auto-Reaper** | Wait for 00:00 or click Revoke | Socket severed in mid-air and user purged | ✅ |
-| **Automated Tests** | `.\run_pam_tests.bat` | 13 of 13 tests passed | ✅ |
+| **Automated Tests** | `.\run_pam_tests.bat` | All 25 of 25 tests passed | ✅ |

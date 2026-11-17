@@ -183,6 +183,24 @@ def init_db():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         """)
 
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS access_requests (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            request_id VARCHAR(100) UNIQUE NOT NULL,
+            server_id VARCHAR(100) NOT NULL,
+            requester VARCHAR(100) NOT NULL,
+            reason TEXT NOT NULL,
+            risk_level VARCHAR(50) NOT NULL,
+            ttl_minutes INT NOT NULL,
+            status VARCHAR(50) DEFAULT 'PENDING_APPROVAL',
+            reviewer VARCHAR(100),
+            reviewer_comments TEXT,
+            created_at VARCHAR(100) NOT NULL,
+            reviewed_at VARCHAR(100),
+            lease_id VARCHAR(100)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """)
+
     else:
         # SQLite Schema
         conn.execute("""
@@ -245,6 +263,25 @@ def init_db():
             violations_count INTEGER DEFAULT 0,
             transcript TEXT DEFAULT '',
             FOREIGN KEY (lease_id) REFERENCES leases(lease_id)
+        )
+        """)
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS access_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            request_id TEXT UNIQUE NOT NULL,
+            server_id TEXT NOT NULL,
+            requester TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            risk_level TEXT NOT NULL,
+            ttl_minutes INTEGER NOT NULL,
+            status TEXT DEFAULT 'PENDING_APPROVAL',
+            reviewer TEXT,
+            reviewer_comments TEXT,
+            created_at TEXT NOT NULL,
+            reviewed_at TEXT,
+            lease_id TEXT,
+            FOREIGN KEY (server_id) REFERENCES servers(server_id)
         )
         """)
 
@@ -505,6 +542,62 @@ def get_session_by_id(session_id: str):
     return row
 
 
+# --- Access Requests (Maker-Checker Approval Queue) ---
+def create_access_request(request_id: str, server_id: str, requester: str, reason: str,
+                          risk_level: str, ttl_minutes: int, status: str = "PENDING_APPROVAL",
+                          reviewer: str = None, reviewer_comments: str = None, lease_id: str = None):
+    conn = get_db_connection()
+    now_str = datetime.now(timezone.utc).isoformat()
+    conn.execute("""
+    INSERT INTO access_requests (
+        request_id, server_id, requester, reason, risk_level, ttl_minutes,
+        status, reviewer, reviewer_comments, created_at, lease_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (request_id, server_id, requester, reason, risk_level, ttl_minutes,
+          status, reviewer, reviewer_comments, now_str, lease_id))
+    conn.commit()
+    conn.close()
+
+
+def get_all_access_requests(limit: int = 100):
+    conn = get_db_connection()
+    conn.execute("""
+    SELECT r.*, COALESCE(s.name, r.server_id) as server_name, s.host as server_host
+    FROM access_requests r
+    LEFT JOIN servers s ON r.server_id = s.server_id
+    ORDER BY r.created_at DESC LIMIT ?
+    """, (limit,))
+    rows = conn.fetchall()
+    conn.close()
+    return rows
+
+
+def get_access_request_by_id(request_id: str):
+    conn = get_db_connection()
+    conn.execute("""
+    SELECT r.*, COALESCE(s.name, r.server_id) as server_name, s.host as server_host
+    FROM access_requests r
+    LEFT JOIN servers s ON r.server_id = s.server_id
+    WHERE r.request_id = ?
+    """, (request_id,))
+    row = conn.fetchone()
+    conn.close()
+    return row
+
+
+def update_access_request_status(request_id: str, status: str, reviewer: str = "SECURITY_ADMIN",
+                                 reviewer_comments: str = "", lease_id: str = None):
+    conn = get_db_connection()
+    now_str = datetime.now(timezone.utc).isoformat()
+    conn.execute("""
+    UPDATE access_requests
+    SET status = ?, reviewer = ?, reviewer_comments = ?, reviewed_at = ?, lease_id = COALESCE(?, lease_id)
+    WHERE request_id = ?
+    """, (status, reviewer, reviewer_comments, now_str, lease_id, request_id))
+    conn.commit()
+    conn.close()
+
+
 # --- KPIs ---
 def get_kpis():
     conn = get_db_connection()
@@ -524,6 +617,9 @@ def get_kpis():
     conn.execute("SELECT COUNT(*) as count FROM audit_ledger")
     total_ledger_blocks = (conn.fetchone() or {}).get("count", 0)
 
+    conn.execute("SELECT COUNT(*) as count FROM access_requests WHERE status = 'PENDING_APPROVAL'")
+    pending_approvals = (conn.fetchone() or {}).get("count", 0)
+
     active_db = getattr(conn, "db_type", "sqlite").upper()
     conn.close()
 
@@ -533,6 +629,7 @@ def get_kpis():
         "active_sessions": active_sessions,
         "blocked_commands": blocked_commands,
         "total_ledger_blocks": total_ledger_blocks,
+        "pending_approvals": pending_approvals,
         "ssh_proxy_port": Config.SSH_PROXY_PORT,
         "db_engine": f"{active_db} PERSISTENT"
     }

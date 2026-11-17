@@ -115,6 +115,11 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 Command Firewall Policies
             </button>
+            <button class="tab-btn" onclick="switchTab('approvals')" id="tab-btn-approvals">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+                Maker-Checker Approvals
+                <span id="badge-pending-count" class="badge-amber" style="padding: 2px 7px; border-radius: 10px; font-size: 11px; margin-left: 4px; display: none;">0</span>
+            </button>
         </section>
 
         <!-- TAB 1: Just-In-Time (JIT) Access Console -->
@@ -150,6 +155,13 @@
                                     <option value="60">60 Minutes</option>
                                 </select>
                             </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Access Governance Tier (Maker-Checker Policy):</label>
+                            <select id="jit-risk-level" class="form-control">
+                                <option value="STANDARD" selected>🟢 Standard Access (Auto-Approved with 2FA)</option>
+                                <option value="CRITICAL">🔴 Critical Production Tier (Requires Senior Admin Approval)</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>Business Justification / Reason:</label>
@@ -562,6 +574,42 @@
             </div>
         </section>
 
+        <!-- TAB: Maker-Checker Access Approvals Queue -->
+        <section class="tab-pane" id="pane-approvals">
+            <div class="glass-card full-width">
+                <div class="card-header">
+                    <div>
+                        <h2>DUAL-APPROVAL MAKER-CHECKER GOVERNANCE QUEUE</h2>
+                        <span class="badge-amber" id="approval-queue-badge">Four-Eyes Access Control</span>
+                    </div>
+                    <button class="btn-sm btn-outline-cyan" onclick="loadAccessRequests()">Refresh Approvals Queue</button>
+                </div>
+                <p class="card-desc">
+                    Enterprise Zero-Trust Principle: High-risk production access requests submitted by engineers are held in quarantine. A Senior Security Admin must verify the justification and sign off before credentials are dynamically minted.
+                </p>
+
+                <div class="table-responsive">
+                    <table class="pam-table">
+                        <thead>
+                            <tr>
+                                <th>Request ID</th>
+                                <th>Target Server</th>
+                                <th>Requester</th>
+                                <th>Governance Tier</th>
+                                <th>TTL</th>
+                                <th>Justification</th>
+                                <th>Status</th>
+                                <th>Senior Admin Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="approvals-tbody">
+                            <tr><td colspan="8" class="text-center text-muted">No pending access requests in queue.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <!-- Modal for Simulating Tampering -->
@@ -697,7 +745,43 @@
         </div>
     </div>
 
-    </main>
+    <!-- Modal for Multi-Factor Authentication (Google Authenticator TOTP) -->
+    <div class="modal-backdrop" id="mfa-modal" style="display:none;">
+        <div class="modal-box" style="width: 520px;">
+            <div class="modal-header">
+                <h3>🔐 GOOGLE AUTHENTICATOR 2FA VERIFICATION</h3>
+                <button class="modal-close" onclick="closeMfaModal()">&times;</button>
+            </div>
+            <p class="modal-desc" style="margin-bottom: 14px;">
+                Zero-Trust Identity Assurance: High-privilege JIT access requires cryptographic phone confirmation.
+            </p>
+
+            <div style="display: flex; gap: 20px; align-items: center; background: #08090c; border: 1px solid var(--border-light); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                <div style="text-align: center;">
+                    <img id="mfa-qr-img" src="" alt="Google Authenticator QR Code" style="width: 130px; height: 130px; border-radius: 6px; background: white; padding: 4px; display: block;">
+                    <span style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; display: block;">Scan with Phone</span>
+                </div>
+                <div style="flex: 1; font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                    <strong style="color: #ffffff; display: block; margin-bottom: 4px;">1. Open Google Authenticator</strong>
+                    <span>Tap <strong>+</strong> and scan this QR code with your camera (or enter secret: <code id="mfa-secret-code" style="color: var(--cyan); word-break: break-all;">...</code>).</span>
+                    <strong style="color: #ffffff; display: block; margin-top: 8px; margin-bottom: 4px;">2. Enter Current 6 Digits</strong>
+                    <span>Type the 6-digit code shown on your phone below:</span>
+                </div>
+            </div>
+
+            <div class="form-group" style="text-align: center; margin-bottom: 20px;">
+                <input type="text" id="mfa-input-code" class="form-control" maxlength="6" placeholder="000000" autocomplete="off" style="font-size: 26px; font-weight: 800; letter-spacing: 8px; text-align: center; font-family: var(--font-mono); color: var(--emerald); border-color: var(--emerald); width: 220px; margin: 0 auto;">
+            </div>
+
+            <div class="modal-actions" style="margin-top: 10px;">
+                <button class="btn-secondary" onclick="closeMfaModal()">Cancel</button>
+                <button class="btn-primary" onclick="confirmMfaAndSubmit()">
+                    <span>Verify Code &amp; Grant Access</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal for Simulating Tampering -->
     <div class="modal-backdrop" id="tamper-modal" style="display:none;">
