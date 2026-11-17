@@ -11,14 +11,14 @@ ZeroVault PAM is a **production-grade, enterprise Privileged Access Management (
 
 It eliminates the risk of shared administrative passwords: **engineers, DBAs, and third-party contractors are never given static master passwords to production servers or databases**. Instead, users request Just-In-Time (JIT) ephemeral leases, verify their identity via **Google Authenticator 2FA**, undergo **Maker-Checker Dual-Approval** for high-risk tasks, connect through a credentialless proxy on Port 2222, have keystrokes inspected by a mid-air command firewall, and have all sessions cryptographically recorded into an immutable **SHA-256 Merkle hash-chain ledger**.
 
-[ZeroVault PAM Command Center & SOC Dashboard]<img width="1901" height="903" alt="1" src="https://github.com/user-attachments/assets/28d98e58-f7f4-475d-8eb1-e3210f458245" />
+[ZeroVault PAM Command Center & SOC Dashboard]<img width="1501" height="803" alt="1" src="https://github.com/user-attachments/assets/28d98e58-f7f4-475d-8eb1-e3210f458245" />
 
-[Just-In-Time Ephemeral Access Request Console]<img width="1917" height="907" alt="2" src="https://github.com/user-attachments/assets/39f4ae66-7d71-4ffc-9162-1e01bb62d3b5" />
+[Just-In-Time Ephemeral Access Request Console]<img width="1500" height="800" alt="2" src="https://github.com/user-attachments/assets/39f4ae66-7d71-4ffc-9162-1e01bb62d3b5" />
 
-[Google Authenticator Multi-Factor Authentication (RFC 6238 TOTP)]<img width="1312" height="1079" alt="3" src="https://github.com/user-attachments/assets/88e2ea3a-8a6c-4aeb-b2b3-63598c77674a" />
+[Google Authenticator Multi-Factor Authentication (RFC 6238 TOTP)]<img width="1200" height="600" alt="3" src="https://github.com/user-attachments/assets/88e2ea3a-8a6c-4aeb-b2b3-63598c77674a" />
 
 
-[Active JIT Ephemeral Leases with Live Countdown & TTL Controls]<img width="1837" height="337" alt="4" src="https://github.com/user-attachments/assets/a3bf041d-cce0-4af9-8d91-50451780ef81" />
+[Active JIT Ephemeral Leases with Live Countdown & TTL Controls]<img width="1500" height="337" alt="4" src="https://github.com/user-attachments/assets/a3bf041d-cce0-4af9-8d91-50451780ef81" />
 
 [Live SSH Protocol Proxy (Port 2222) & Mid-Air Keystroke Firewall]<img width="1047" height="508" alt="5" src="https://github.com/user-attachments/assets/1a8d650d-52d9-4cf4-9559-03061db975a6" />
 
