@@ -10,6 +10,14 @@
 ZeroVault PAM is a **production-grade, enterprise Privileged Access Management (PAM) vault, Ephemeral Identity Provisioner, and Live SSH Protocol Proxy Gateway** modeled after industry standards like **CyberArk Privileged Access Manager**, **Teleport Enterprise**, and **HashiCorp Boundary**.
 
 It eliminates the risk of shared administrative passwords: **engineers, DBAs, and third-party contractors are never given static master passwords to production servers or databases**. Instead, users request Just-In-Time (JIT) ephemeral leases, verify their identity via **Google Authenticator 2FA**, undergo **Maker-Checker Dual-Approval** for high-risk tasks, connect through a credentialless proxy on Port 2222, have keystrokes inspected by a mid-air command firewall, and have all sessions cryptographically recorded into an immutable **SHA-256 Merkle hash-chain ledger**.
+<img width="1901" height="903" alt="1" src="https://github.com/user-attachments/assets/28d98e58-f7f4-475d-8eb1-e3210f458245" />"ZeroVault PAM Command Center & SOC Dashboard"
+<img width="1917" height="907" alt="2" src="https://github.com/user-attachments/assets/39f4ae66-7d71-4ffc-9162-1e01bb62d3b5" />"Just-In-Time Ephemeral Access Request Console"
+<img width="687" height="567" alt="3" src="https://github.com/user-attachments/assets/93fa1da1-9247-485b-a006-1816c9c4947e" />"Google Authenticator Multi-Factor Authentication (RFC 6238 TOTP)"
+<img width="1837" height="337" alt="4" src="https://github.com/user-attachments/assets/a3bf041d-cce0-4af9-8d91-50451780ef81" />"Active JIT Ephemeral Leases with Live Countdown & TTL Controls"
+<img width="1047" height="508" alt="5" src="https://github.com/user-attachments/assets/1a8d650d-52d9-4cf4-9559-03061db975a6" />"Live SSH Protocol Proxy (Port 2222) & Mid-Air Keystroke Firewall"
+<img width="1418" height="801" alt="6" src="https://github.com/user-attachments/assets/eae83dd1-2e45-4466-96fe-c1aa27b9fb1c" />"Real-Time Push Alerts & Security Incident Notifications"
+<img width="1893" height="492" alt="7" src="https://github.com/user-attachments/assets/35205144-7eba-4ae0-8188-d62971a91a83" />"Maker-Checker Dual-Approval Governance Queue"
+
 
 ---
 
