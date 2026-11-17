@@ -15,7 +15,8 @@ It eliminates the risk of shared administrative passwords: **engineers, DBAs, an
 
 [Just-In-Time Ephemeral Access Request Console]<img width="1917" height="907" alt="2" src="https://github.com/user-attachments/assets/39f4ae66-7d71-4ffc-9162-1e01bb62d3b5" />
 
-[Google Authenticator Multi-Factor Authentication (RFC 6238 TOTP)]<img width="687" height="567" alt="3" src="https://github.com/user-attachments/assets/93fa1da1-9247-485b-a006-1816c9c4947e" />
+[Google Authenticator Multi-Factor Authentication (RFC 6238 TOTP)]<img width="1312" height="1079" alt="3" src="https://github.com/user-attachments/assets/88e2ea3a-8a6c-4aeb-b2b3-63598c77674a" />
+
 
 [Active JIT Ephemeral Leases with Live Countdown & TTL Controls]<img width="1837" height="337" alt="4" src="https://github.com/user-attachments/assets/a3bf041d-cce0-4af9-8d91-50451780ef81" />
 
