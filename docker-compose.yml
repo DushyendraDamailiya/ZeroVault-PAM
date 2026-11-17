@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # 1. ZeroVault PAM Web Console & SSH Protocol Proxy Gateway
+  zerovault:
+    build: .
+    container_name: zerovault_pam
+    restart: unless-stopped
+    ports:
+      - "5005:5005"    # Web Dashboard API
+      - "2222:2222"    # Live SSH Protocol Proxy Gateway
+    environment:
+      - ZEROVAULT_PORT=5005
+      - SSH_PROXY_PORT=2222
+      - ZEROVAULT_DB_TYPE=mysql
+      - MYSQL_HOST=mysql-db
+      - MYSQL_PORT=3306
+      - MYSQL_USER=zerovault
+      - MYSQL_PASSWORD=zerovault_secure_pass_2026
+      - MYSQL_DATABASE=zerovault_pam
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      target-server:
+        condition: service_started
+
+  # 2. Enterprise MySQL Relational Database
+  mysql-db:
+    image: mysql:8.0
+    container_name: zerovault_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_master_password_2026!
+      MYSQL_DATABASE: zerovault_pam
+      MYSQL_USER: zerovault
+      MYSQL_PASSWORD: zerovault_secure_pass_2026
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "zerovault", "-pzerovault_secure_pass_2026"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # 3. Target Linux Production Server (Demonstrates real dynamic SSH user provisioning)
+  target-server:
+    image: rastasheep/ubuntu-sshd:18.04
+    container_name: zerovault_target_linux
+    restart: unless-stopped
+    ports:
+      - "2223:22"
+
+volumes:
+  mysql_data:

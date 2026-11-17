@@ -1,0 +1,16 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+zerovault_test.db
+*.db
+*.db-wal
+*.db-shm
+.idea/
+.vscode/

@@ -666,7 +666,7 @@ def reset_database():
     elif db_type == "mysql":
         try:
             conn = db.get_db_connection()
-            for tbl in ["sessions", "audit_ledger", "leases", "servers"]:
+            for tbl in ["sessions", "audit_ledger", "access_requests", "leases", "servers"]:
                 conn.execute(f"DROP TABLE IF EXISTS {tbl};")
             conn.close()
         except Exception:
